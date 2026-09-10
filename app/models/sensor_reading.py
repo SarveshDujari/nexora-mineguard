@@ -25,7 +25,5 @@ class SensorReading(Base):
     flex_raw: Mapped[int] = mapped_column(Integer)
     crack_ok: Mapped[bool] = mapped_column(Boolean)
     rssi: Mapped[float | None] = mapped_column(Float,nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),server_default=func.now())
-    crack_ok: Mapped[bool] = mapped_column(Boolean)
     buffered: Mapped[bool] = mapped_column(Boolean, default=False) 
-    rssi: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),server_default=func.now())
