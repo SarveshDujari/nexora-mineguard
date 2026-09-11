@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
 from app.models.alert import Alert
 from app.models.risk_score import RiskScore
+from datetime import UTC, datetime
 
 router = APIRouter(prefix="/api/alerts",tags=["Alerts"])
 @router.get("/")
@@ -22,7 +23,7 @@ def generate_alert(node_id: str,db: Session = Depends(get_db)):
         severity = "CRITICAL"
     elif latest_risk.score >= 60:
         severity = "HIGH"
-    elif latest_risk.score >= 40:
+    elif latest_risk.score >= 30:
         severity = "MEDIUM"
     else:
         severity = "LOW"
@@ -42,10 +43,15 @@ def generate_alert(node_id: str,db: Session = Depends(get_db)):
     )
     alert = Alert(
         node_id=node_id,
+        status = "ACTIVE",
         severity=severity,
         signal=latest_risk.signal,
         score=latest_risk.score,
         message=message,
+        acknowledged=False,
+        sms_sent=False,
+        email_sent=False,
+        resolved_at=None,
         node_timestamp=latest_risk.node_timestamp,
     )
     db.add(alert)
@@ -58,5 +64,41 @@ def generate_alert(node_id: str,db: Session = Depends(get_db)):
         "score": alert.score,
         "signal": alert.signal,
         "message": alert.message,
-        "status": alert.status
+        "status": alert.status,
+        "acknowledged": alert.acknowledged,
+        "sms_sent": alert.sms_sent,
+        "email_sent": alert.email_sent,
+        "resolved_at": alert.resolved_at
     }
+
+@router.patch("/{alert_id}/ack")
+def acknowledge_alert(alert_id: int, db: Session = Depends(get_db)):
+    alert = (
+        db.query(Alert).filter(Alert.id == alert_id).first()
+    )
+    if not alert:
+        return {"error": "Alert not found"}
+    alert.acknowledged = True
+    db.commit()
+    return {"message": "Alert acknowledged successfully", "alert_id": alert.id}
+
+@router.patch("/{alert_id}/resolve")
+def resolve_alert(alert_id: int,db: Session = Depends(get_db)):
+    alert = (
+        db.query(Alert).filter(Alert.id == alert_id).first()
+    )
+    if not alert:
+        return {"error": "Alert not found"}
+    alert.status = "RESOLVED"
+    alert.resolved_at = datetime.now(UTC)
+    db.commit()
+    return {
+        "message": "Alert resolved",
+        "alert_id": alert.id
+    }
+
+@router.get("/active")
+def get_active_alerts(db: Session = Depends(get_db)):
+    return (
+        db.query(Alert).filter(Alert.status == "ACTIVE").all()
+    )

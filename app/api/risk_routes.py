@@ -1,6 +1,8 @@
+from datetime import UTC, datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_db
+from app.models.alert import Alert
 from app.models.risk_score import RiskScore
 from app.models.sensor_reading import SensorReading
 
@@ -50,16 +52,22 @@ def calculate_node_risk(node_id: str,db: Session = Depends(get_db)):
         return {"error": "No reading found for the given node ID"}
     score = calculate_risk(reading)
     severity = get_severity(score)
-    rik_entry = RiskScore(
+    active_alert = (db.query(Alert).filter(Alert.node_id == node_id,Alert.status == "ACTIVE").order_by(Alert.timestamp.desc()).first())
+    if active_alert and score < 30:
+        active_alert.status = "RESOLVED"
+        active_alert.resolved_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(active_alert)
+    risk_entry = RiskScore(
         node_id=node_id,
         score=score,
         signal="ACTIVE",
         severity=severity,
         node_timestamp=reading.node_timestamp,
     )
-    db.add(rik_entry)
+    db.add(risk_entry)
     db.commit()
-    db.refresh(rik_entry)
+    db.refresh(risk_entry)
     return {
         "node_id": node_id,
         "risk_score": score,
