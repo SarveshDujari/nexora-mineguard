@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import {
   Shield,
@@ -24,6 +24,7 @@ import {
   BellRing,
 } from "lucide-react";
 import "./Dashboard.css";
+import { fetchLiveData } from "./liveData";
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -48,7 +49,6 @@ const navItems = [
     label: "Alerts",
     icon: Bell,
     path: "/Alerts",
-    badge: 2,
   },
 ];
 
@@ -116,94 +116,13 @@ const pipelineStages = [
 const connectorColors = ["blue", "emerald", "blue", "emerald", "blue", "emerald", "blue"];
 
 const connectionHealth = [
-  { label: "ESP32 → Bridge", status: "Connected · RSSI -62 dBm" },
-  { label: "Bridge → Gateway", status: "Connected · RSSI -78 dBm" },
+  { label: "ESP32 → Bridge", status: "Prototype link · Live" },
+  { label: "Bridge → Gateway", status: "Gateway link · Live" },
   { label: "Gateway → Backend", status: "Connected · Live" },
-  { label: "Backend → Dashboard", status: "Connected · Live" },
+  { label: "Backend → Dashboard", status: "API polling · Live" },
 ];
 
-const nodes = [
-  {
-    id: "NODE 01",
-    location: "North Bench",
-    status: "SAFE",
-    statusClass: "safe",
-    riskScore: 18,
-    riskLabel: "LOW",
-    concern: "All readings normal",
-    concernClass: "normal",
-    readings: [
-      { label: "Vibration", value: "Normal", tone: "safe" },
-      { label: "Tilt", value: "Stable", tone: "safe" },
-      { label: "Crack", value: "Normal", tone: "safe" },
-    ],
-    lastUpdate: "3 sec ago",
-    dotClass: "safe",
-  },
-  {
-    id: "NODE 02",
-    location: "Central Haul Road",
-    status: "WARNING",
-    statusClass: "warning",
-    riskScore: 58,
-    riskLabel: "MEDIUM",
-    concern: "Vibration increasing ↑",
-    concernClass: "warning",
-    readings: [
-      { label: "Vibration", value: "4.82 mm/s", tone: "warning" },
-      { label: "Tilt", value: "Increasing", tone: "warning" },
-      { label: "Crack", value: "Normal", tone: "safe" },
-    ],
-    lastUpdate: "4 sec ago",
-    dotClass: "warning",
-  },
-  {
-    id: "NODE 03",
-    location: "South Zone",
-    status: "CRITICAL",
-    statusClass: "critical",
-    riskScore: 92,
-    riskLabel: "HIGH",
-    concern: "Displacement above threshold",
-    concernClass: "critical",
-    readings: [
-      { label: "Vibration", value: "8.4 mm/s", tone: "critical" },
-      { label: "Tilt", value: "0.82°", tone: "critical" },
-      { label: "Crack", value: "Detected", tone: "critical", strong: true },
-    ],
-    lastUpdate: "3 sec ago",
-    dotClass: "critical",
-  },
-];
-
-const activeAlerts = [
-  {
-    level: "CRITICAL",
-    node: "Node 03",
-    message: "Displacement above threshold",
-    time: "2 min ago",
-    tone: "critical",
-  },
-  {
-    level: "WARNING",
-    node: "Node 02",
-    message: "Vibration increasing ↑",
-    time: "8 min ago",
-    tone: "warning",
-  },
-];
-
-const mapMarkers = [
-  { id: "Node 01", top: "28%", left: "28%", tone: "safe" },
-  { id: "Node 02", top: "50%", left: "50%", tone: "warning" },
-  { id: "Node 03", top: "68%", left: "72%", tone: "critical", callout: true },
-];
-
-// ---------------------------------------------------------------------------
-// Small reusable pieces
-// ---------------------------------------------------------------------------
-
-function NavLink({ item }) {
+function NavLink({ item, badge }) {
   const Icon = item.icon;
 
   return (
@@ -219,14 +138,14 @@ function NavLink({ item }) {
         <span>{item.label}</span>
       </span>
 
-      {item.badge != null && (
-        <span className="nav-badge">{item.badge}</span>
+      {badge != null && badge > 0 && (
+        <span className="nav-badge">{badge}</span>
       )}
     </RouterNavLink>
   );
 }
 
-function PipelineStage({ stage, isLast }) {
+function PipelineStage({ stage }) {
   const Icon = stage.icon;
   return (
     <div className={`pipeline-stage pipeline-stage--${stage.variant}`}>
@@ -392,6 +311,67 @@ function MapMarker({ marker }) {
 // ---------------------------------------------------------------------------
 
 export default function MineGuardDashboard() {
+  const [live, setLive] = useState(null);
+  const [online, setOnline] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const data = await fetchLiveData();
+        if (mounted) { setLive(data); setOnline(true); }
+      } catch {
+        if (mounted) setOnline(false);
+      }
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
+
+  const severityToClass = (severity) =>
+    severity === "RED" ? "critical" : severity === "AMBER" ? "warning" : "safe";
+  const severityToLabel = (severity) =>
+    severity === "RED" ? "HIGH" : severity === "AMBER" ? "MEDIUM" : "LOW";
+  const liveNodes = live
+    ? ["A", "B"].map((id) => {
+        const r = live.byNode[id];
+        const risk = live.risks[id];
+        if (!r) return null;
+        const severity = risk?.severity || "GREEN";
+        const cls = severityToClass(severity);
+        const score = Number(risk?.score || 0).toFixed(2);
+        const progression = risk?.signal || "INSUFFICIENT_DATA";
+        return {
+          id: `NODE ${id}`, location: `Active Sensor ${id}`, status: severity,
+          statusClass: cls, riskScore: score, riskLabel: severityToLabel(severity),
+          concern: progression.replaceAll("_", " "), concernClass: cls,
+          readings: [
+            { label: "Vibration", value: `${Number(r.vib_rms).toFixed(3)} RMS`, tone: cls },
+            { label: "Tilt", value: `${Number(r.tilt_x).toFixed(3)}° / ${Number(r.tilt_y).toFixed(3)}°`, tone: cls },
+            { label: "RSSI", value: r.rssi == null ? "N/A" : `${Number(r.rssi).toFixed(1)} dBm`, tone: "safe" },
+          ],
+          lastUpdate: "just now", dotClass: cls,
+        };
+      }).filter(Boolean)
+    : [];
+
+  const nodes = liveNodes;
+  const activeAlerts = live
+    ? (live.alerts || []).filter((a) => a.status === "ACTIVE").map((a) => ({
+        level: a.severity, node: `Node ${a.node_id}`, message: a.message,
+        time: "live", tone: severityToClass(a.severity),
+      }))
+    : [];
+  const mapMarkers = nodes.map((node, index) => ({
+    id: node.id.replace("NODE ", "Node "), top: index === 0 ? "35%" : "60%",
+    left: index === 0 ? "35%" : "62%", tone: node.statusClass,
+  }));
+  const attentionNodes = nodes.filter((n) => n.status !== "GREEN" && n.status !== "SAFE");
+  const overall = !online ? "NO DATA" : nodes.some((n) => n.status === "RED") ? "RED" : nodes.some((n) => n.status === "AMBER") ? "AMBER" : "GREEN";
+  const overallClass = overall === "NO DATA" ? "warning" : severityToClass(overall);
+  const primary = attentionNodes[0];
+
   return (
     <div className="mg-app">
       {/* Sidebar */}
@@ -408,7 +388,11 @@ export default function MineGuardDashboard() {
           </div>
           <nav className="mg-sidebar__nav">
             {navItems.map((item) => (
-              <NavLink key={item.label} item={item} />
+              <NavLink
+                key={item.label}
+                item={item}
+                badge={item.label === "Alerts" ? activeAlerts.length : null}
+              />
             ))}
           </nav>
         </div>
@@ -421,19 +405,27 @@ export default function MineGuardDashboard() {
             <span className="mg-header__title">MineGuard</span>
             <div className="pill pill--online">
               <span className="dot dot--online" />
-              <span>System Online</span>
+              <span>{online ? "System Online" : "Backend Offline"}</span>
             </div>
           </div>
           <div className="mg-header__right">
             <div className="pill pill--live">
               <span className="dot dot--live" />
-              <span>Live · Updated 3s ago</span>
+              <span>{online ? "Live · Updated just now" : "Waiting for backend"}</span>
             </div>
           </div>
         </header>
 
         {/* Main */}
         <main className="mg-main">
+          {!online && (
+            <section className="card" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+              <strong>Backend unavailable</strong>
+              <div style={{ marginTop: "0.25rem", opacity: 0.75 }}>
+                Start FastAPI to display live A/B telemetry. Demo data is not shown as live data.
+              </div>
+            </section>
+          )}
           {/* Mine status banner */}
           <section className="card status-banner">
             <div className="status-banner__left">
@@ -443,16 +435,16 @@ export default function MineGuardDashboard() {
               <div className="status-banner__text">
                 <span className="eyebrow">MINE STATUS</span>
                 <div className="status-banner__row">
-                  <span className="status-pill status-pill--critical status-pill--lg">
+                  <span className={`status-pill status-pill--${overallClass} status-pill--lg`}>
                     <span className="status-pill__dot" />
-                    CRITICAL
+                    {overall}
                   </span>
-                  <span className="status-banner__summary">— 1 of 3 nodes requires attention</span>
+                  <span className="status-banner__summary">— {attentionNodes.length} of {nodes.length} nodes require attention</span>
                 </div>
                 <p className="status-banner__detail">
                   Primary concern:{" "}
                   <span className="status-banner__detail-strong">
-                    Node 03 · Displacement above threshold
+                    {primary ? `${primary.id} · ${primary.concern}` : "No active concern"}
                   </span>
                 </p>
               </div>
@@ -510,20 +502,14 @@ export default function MineGuardDashboard() {
           <section className="node-summary">
             <div className="node-summary__title">
               <Radio size={18} />
-              <span>3 Sensor Nodes</span>
+              <span>{nodes.length} Active Sensor Nodes</span>
             </div>
             <div className="node-summary__legend">
-              <span className="legend-item">
-                <span className="dot dot--safe" /> 1 Safe
-              </span>
+              <span className="legend-item"><span className="dot dot--safe" /> {nodes.filter(n => n.status === "GREEN" || n.status === "SAFE").length} Safe</span>
               <span className="legend-sep">·</span>
-              <span className="legend-item">
-                <span className="dot dot--warning" /> 1 Warning
-              </span>
+              <span className="legend-item"><span className="dot dot--warning" /> {nodes.filter(n => n.status === "AMBER" || n.status === "WARNING").length} Warning</span>
               <span className="legend-sep">·</span>
-              <span className="legend-item">
-                <span className="dot dot--critical" /> 1 Critical
-              </span>
+              <span className="legend-item"><span className="dot dot--critical" /> {nodes.filter(n => n.status === "RED" || n.status === "CRITICAL").length} Critical</span>
             </div>
           </section>
 
@@ -536,15 +522,15 @@ export default function MineGuardDashboard() {
               <div className="early-warning__text">
                 <span className="early-warning__badge">
                   <span className="dot dot--warning-pulse" />
-                  EARLY WARNING
+                  {primary ? "AI STATUS" : "MONITORING"}
                 </span>
                 <span className="early-warning__message">
-                  Node 03 risk increasing rapidly · Potential impact zone: 120 m
+                  {primary ? `${primary.id} risk status · ${primary.concern}` : "All monitored nodes are within GREEN status"}
                 </span>
               </div>
             </div>
             <div className="early-warning__right">
-              <span>Rapid slope displacement trend</span>
+              <span>{primary ? primary.concern : "No elevated movement trend"}</span>
             </div>
           </div>
 
@@ -570,8 +556,8 @@ export default function MineGuardDashboard() {
                   </span>
                 </div>
                 <div className="risk-trend__values">
-                  <span className="risk-trend__node">Node 03 · Increasing rapidly:</span>
-                  <span className="risk-trend__numbers">72 → 78 → 84 → 92 ↑</span>
+                  <span className="risk-trend__node">{primary ? `${primary.id} · ${primary.concern}:` : "Live AI status:"}</span>
+                  <span className="risk-trend__numbers">{primary ? `${primary.riskScore}/100` : "GREEN"}</span>
                 </div>
               </div>
             </div>

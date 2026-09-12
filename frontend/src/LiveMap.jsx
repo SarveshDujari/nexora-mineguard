@@ -17,86 +17,34 @@ import {
   ArrowRight,
 } from "lucide-react";
 import "./LiveMap.css";
+import { fetchLiveData } from "./liveData";
+
+
+function useUtcClock() {
+  const format = () => {
+    const now = new Date();
+    return `UTC ${String(now.getUTCHours()).padStart(2,"0")}:${String(now.getUTCMinutes()).padStart(2,"0")}:${String(now.getUTCSeconds()).padStart(2,"0")} • ${String(now.getUTCDate()).padStart(2,"0")} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+  };
+  const [clock, setClock] = useState(format());
+  useEffect(() => {
+    const id = setInterval(() => setClock(format()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return clock;
+}
 
 // ---------------------------------------------------------------------------
 // Static / mock telemetry data — mirrors the real backend schema
 // ---------------------------------------------------------------------------
 const NODE_TELEMETRY = {
-  1: {
-    node_id: "node-01",
-    name: "Node 01",
-    zone: "North Bench",
-    sector: "Sector Alpha",
-    lat: 23.6592,
-    lng: 86.4495,
-    telemetry: {
-      tilt_x: 0.02,
-      tilt_y: 0.01,
-      vib_rms: 0.14,
-      flex_raw: 340,
-      crack_ok: true,
-      rssi: -64,
-      buffered: false,
-    },
-    alert: {
-      severity: "SAFE",
-      signal: "nominal",
-      score: 0.2,
-      message: "All sensor parameters within standard baseline limits.",
-      ts: "11:42:00 UTC",
-    },
-  },
-  2: {
-    node_id: "node-02",
-    name: "Node 02",
-    zone: "Central Haul Road",
-    sector: "Sector Beta",
-    lat: 23.6558,
-    lng: 86.4526,
-    telemetry: {
-      tilt_x: 0.24,
-      tilt_y: 0.18,
-      vib_rms: 5.12,
-      flex_raw: 680,
-      crack_ok: true,
-      rssi: -74,
-      buffered: false,
-    },
-    alert: {
-      severity: "WARNING",
-      signal: "vib_spike",
-      score: 1.4,
-      message: "Elevated vibration harmonic detected on haulage line",
-      ts: "11:41:45 UTC",
-    },
-  },
-  3: {
-    node_id: "node-03",
-    name: "Node 03",
-    zone: "South Zone",
-    sector: "Sector Gamma",
-    lat: 23.6515,
-    lng: 86.4552,
-    telemetry: {
-      tilt_x: 84.5,
-      tilt_y: 12.2,
-      vib_rms: 8.4,
-      flex_raw: 940,
-      crack_ok: false,
-      rssi: -82,
-      buffered: false,
-    },
-    alert: {
-      severity: "CRITICAL",
-      signal: "tilt_rate",
-      score: 2.7,
-      message: "Node 03 tilt rate exceeded threshold (2.7σ over 30s window)",
-      ts: "11:42:08 UTC",
-    },
-  },
+  1: { node_id: "A", name: "Node A", zone: "Active Sensor A", sector: "Prototype", lat: 23.6550, lng: 86.4520, telemetry: { tilt_x: 0, tilt_y: 0, vib_rms: 0, flex_raw: 0, crack_ok: true, rssi: null, buffered: false }, alert: { severity: "GREEN", signal: "INSUFFICIENT_DATA", score: 0, message: "Waiting for live telemetry.", ts: "" } },
+  2: { node_id: "B", name: "Node B", zone: "Active Sensor B", sector: "Prototype", lat: 23.6570, lng: 86.4540, telemetry: { tilt_x: 0, tilt_y: 0, vib_rms: 0, flex_raw: 0, crack_ok: true, rssi: null, buffered: false }, alert: { severity: "GREEN", signal: "INSUFFICIENT_DATA", score: 0, message: "Waiting for live telemetry.", ts: "" } },
 };
 
 const SEVERITY_CLASS = {
+  RED: "critical",
+  AMBER: "warning",
+  GREEN: "safe",
   CRITICAL: "critical",
   WARNING: "warning",
   SAFE: "safe",
@@ -133,7 +81,7 @@ const NAV_ITEMS = [
   { key: "alerts", label: "Alerts", icon: Bell, path: "/Alerts", badge: 2 },
 ];
 
-function Sidebar({ activePath, onNavigate }) {
+function Sidebar({ activePath, onNavigate, activeAlertCount }) {
   const navigate = useNavigate();
   return (
     <aside className="mg-sidebar">
@@ -169,8 +117,8 @@ function Sidebar({ activePath, onNavigate }) {
                     <Icon size={20} />
                     <span>{item.label}</span>
                   </span>
-                  {item.badge ? (
-                    <span className="mg-nav-badge">{item.badge}</span>
+                  {item.key === "alerts" && activeAlertCount > 0 ? (
+                    <span className="mg-nav-badge">{activeAlertCount}</span>
                   ) : null}
                 </button>
               );
@@ -325,20 +273,45 @@ function NodePopover({ node, onClose, onViewDetails }) {
 // Main Live Map page
 // ---------------------------------------------------------------------------
 export default function LiveMap() {
-  const navigate = useNavigate();
+  const clock = useUtcClock();
   const [activePath, setActivePath] = useState("live-map");
-  const [selectedNodeId, setSelectedNodeId] = useState(3);
+  const [selectedNodeId, setSelectedNodeId] = useState(1);
+  const [nodeTelemetry, setNodeTelemetry] = useState(NODE_TELEMETRY);
   const [popoverOpen, setPopoverOpen] = useState(true);
+  const [activeAlertCount, setActiveAlertCount] = useState(0);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({});
 
-  const selectedNode = selectedNodeId ? NODE_TELEMETRY[selectedNodeId] : null;
+  const selectedNode = selectedNodeId ? nodeTelemetry[selectedNodeId] : null;
 
   const handleSelectNode = useCallback((id) => {
     setSelectedNodeId(id);
     setPopoverOpen(true);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const live = await fetchLiveData();
+        if (!mounted) return;
+        const next = { ...NODE_TELEMETRY };
+        ["A", "B"].forEach((id, index) => {
+          const r = live.byNode[id];
+          const risk = live.risks[id];
+          if (!r) return;
+          const key = index + 1;
+          next[key] = { ...next[key], telemetry: { ...next[key].telemetry, tilt_x: r.tilt_x, tilt_y: r.tilt_y, vib_rms: r.vib_rms, flex_raw: r.flex_raw, crack_ok: r.crack_ok, rssi: r.rssi, buffered: r.buffered }, alert: { severity: risk?.severity || "GREEN", signal: risk?.signal || "INSUFFICIENT_DATA", score: Number(risk?.score || 0) * 100, message: risk?.signal ? risk.signal.replaceAll("_", " ") : "Awaiting temporal baseline.", ts: new Date().toUTCString() } };
+        });
+        setNodeTelemetry(next);
+        setActiveAlertCount((live.alerts || []).filter((a) => a.status === "ACTIVE").length);
+      } catch { /* keep previous live state */ }
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => { mounted = false; clearInterval(id); };
   }, []);
 
   // Initialize Leaflet map once
@@ -353,25 +326,6 @@ export default function LiveMap() {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
-
-    // Hazard risk-intensity rings
-    L.circle([23.6515, 86.4552], {
-      radius: 280,
-      color: "#ef4444",
-      weight: 1.5,
-      opacity: 0.5,
-      fillColor: "#ef4444",
-      fillOpacity: 0.14,
-    }).addTo(map);
-
-    L.circle([23.6558, 86.4526], {
-      radius: 160,
-      color: "#f59e0b",
-      weight: 1,
-      opacity: 0.4,
-      fillColor: "#f59e0b",
-      fillOpacity: 0.08,
     }).addTo(map);
 
     const buildIcon = (id, node) => {
@@ -421,7 +375,7 @@ export default function LiveMap() {
       });
     };
 
-    Object.entries(NODE_TELEMETRY).forEach(([id, node]) => {
+    Object.entries(nodeTelemetry).forEach(([id, node]) => {
       const marker = L.marker([node.lat, node.lng], {
         icon: buildIcon(id, node),
       }).addTo(map);
@@ -439,23 +393,35 @@ export default function LiveMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    // Refresh marker labels/colors without recreating the Leaflet map.
+    if (!mapInstanceRef.current) return;
+    Object.entries(nodeTelemetry).forEach(([id, node]) => {
+      const marker = markersRef.current[id];
+      if (!marker) return;
+      const sevClass = SEVERITY_CLASS[node.alert.severity] || "safe";
+      const bg = sevClass === "critical" ? "#ef4444" : sevClass === "warning" ? "#f59e0b" : "#10b981";
+      marker.setIcon(L.divIcon({ className: "", iconSize: [130, 60], iconAnchor: [65, 20], html: `<div class="mg-marker"><div class="mg-marker-dot-wrap"><span class="mg-marker-halo" style="width:2rem;height:2rem;background:${bg}33;"></span><div class="mg-marker-core ${sevClass}" style="background:${bg};"><span class="mg-marker-core-dot"></span></div></div><div class="mg-marker-label"><span class="mg-marker-label-text">${node.name} · ${node.alert.severity}</span></div></div>` }));
+    });
+  }, [nodeTelemetry]);
+
   const handleZoomIn = () => mapInstanceRef.current?.zoomIn();
   const handleZoomOut = () => mapInstanceRef.current?.zoomOut();
   const handleRecenter = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
     const bounds = L.latLngBounds(
-      Object.values(NODE_TELEMETRY).map((n) => [n.lat, n.lng])
+      Object.values(nodeTelemetry).map((n) => [n.lat, n.lng])
     );
     map.flyToBounds(bounds, { padding: [60, 60], duration: 1 });
-    handleSelectNode(3);
+    handleSelectNode(1);
   };
 
   return (
     <div className="mg-root">
-      <Sidebar activePath={activePath} onNavigate={setActivePath} />
+      <Sidebar activePath={activePath} onNavigate={setActivePath} activeAlertCount={activeAlertCount} />
       <div className="mg-body">
-        <Header timestamp="UTC 14:32:08 • 24 Oct 2024" />
+        <Header timestamp={clock} />
         <main className="mg-main">
           <div className="mg-page-stack">
             {/* Toolbar */}
@@ -466,7 +432,7 @@ export default function LiveMap() {
                   <span className="mg-toolbar-tag mg-text-label-sm">Sector 4-B Pit</span>
                 </div>
                 <p className="mg-toolbar-sub mg-text-body-sm">
-                  Spatial overview of the 3 active sensor nodes across the site
+                  Spatial overview of the 2 active sensor nodes across the prototype
                 </p>
               </div>
               <div className="mg-legend">

@@ -5,30 +5,9 @@ from app.database.dependencies import get_db
 from app.models.alert import Alert
 from app.models.risk_score import RiskScore
 from app.models.sensor_reading import SensorReading
+from app.services.risk_service import (calculate_risk,get_severity)
 
 router = APIRouter(prefix="/api/risk",tags=["Risk"])
-
-def calculate_risk(reading):
-    tilt_comp = min(abs(reading.tilt_x) * 100, 100)
-    vib_comp = min(reading.vib_rms * 500, 100)
-    flex_comp = min(abs(reading.flex_raw - 2100) / 5, 100)
-    crack_comp = 100 if not reading.crack_ok else 0
-    risk = (
-        0.35 * tilt_comp
-        + 0.25 * vib_comp
-        + 0.25 * flex_comp
-        + 0.15 * crack_comp
-    )
-    return round(risk, 2)
-
-def get_severity(score):
-    if score < 10:
-        return "LOW"
-    elif score < 20:
-        return "MEDIUM"
-    elif score < 30:
-        return "HIGH"
-    return "CRITICAL"
 
 @router.get("/{node_id}")
 def get_risk_scores(node_id: str, limit: int = 200, db: Session = Depends(get_db)):

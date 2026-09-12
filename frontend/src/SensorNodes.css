@@ -1811,3 +1811,44 @@ body,
     flex: 1;
   }
 }
+/* Step 9: live chart states */
+.chart-live-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 14px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+.chart-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16,185,129,.12);
+}
+.chart-empty {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #64748b;
+  text-align: center;
+  font-size: 13px;
+}
+.chart-empty small { color: #94a3b8; }
+.chart-loading {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 4px 14px 0;
+  text-align: right;
+}
+.page-empty {
+  margin-bottom: 18px;
+  min-height: 100px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}

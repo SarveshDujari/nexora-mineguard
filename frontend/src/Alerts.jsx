@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import "./Alerts.css";
+import { fetchLiveData, acknowledgeAlert as apiAcknowledgeAlert, resolveAlert as apiResolveAlert } from "./liveData";
 
 /* ------------------------------------------------------------------ */
 /*  Static data                                                        */
@@ -31,89 +32,6 @@ const NAV_ITEMS = [
   { key: "nodes", label: "Nodes", icon: Radio, path: "/Nodes" },
   { key: "live-map", label: "Live Map", icon: MapPin, path: "/LiveMap" },
   { key: "alerts", label: "Alerts", icon: Bell, path: "/Alerts", active: true },
-];
-
-const NODE_STATUS = [
-  {
-    id: "node-01",
-    tone: "safe",
-    name: "Node 01 · North Bench",
-    description: "Nominal slope equilibrium",
-    statusLabel: "SAFE",
-    score: "18/100 · LOW",
-  },
-  {
-    id: "node-02",
-    tone: "warning",
-    name: "Node 02 · Central Haul Road",
-    description: "Vibration & tilt anomalies",
-    statusLabel: "WARNING",
-    score: "58/100 · MEDIUM",
-  },
-  {
-    id: "node-03",
-    tone: "critical",
-    name: "Node 03 · South Zone",
-    description: "Displacement alert triggered",
-    statusLabel: "CRITICAL",
-    score: "92/100 · HIGH",
-  },
-];
-
-const INITIAL_ALERTS = [
-  {
-    id: 1,
-    severity: "critical",
-    icon: "crisis",
-    nodeName: "Node 03 · South Zone",
-    riskScore: 92,
-    riskLevel: "HIGH",
-    title: "High risk detected — rapid displacement trend",
-    signalLabel: "Signal: Displacement ↑",
-    value: "Value: +4.2 mm/hr",
-    trend: "Trend: Increasing rapidly",
-    time: "2 min ago",
-    acknowledged: true,
-  },
-  {
-    id: 2,
-    severity: "warning",
-    icon: "vibration",
-    nodeName: "Node 02 · Central Haul Road",
-    riskScore: 58,
-    riskLevel: "MEDIUM",
-    title: "Abnormal vibration detected",
-    signalLabel: "Signal: Vibration ↑",
-    value: "Value: 4.82 mm/s",
-    trend: "Trend: Increasing",
-    time: "8 min ago",
-    acknowledged: false,
-  },
-  {
-    id: 3,
-    severity: "warning",
-    icon: "tilt",
-    nodeName: "Node 02 · Central Haul Road",
-    riskScore: 58,
-    riskLevel: "MEDIUM",
-    title: "Tilt drift detected",
-    signalLabel: "Signal: Tilt ↑",
-    value: "Value: 0.38°",
-    trend: "Trend: Increasing",
-    time: "42 min ago",
-    acknowledged: true,
-  },
-  {
-    id: 4,
-    severity: "resolved",
-    icon: "resolved",
-    nodeName: "Node 01 · North Bench",
-    riskScore: 18,
-    riskLevel: "LOW",
-    title: "Routine calibration check completed successfully",
-    statusText: "Status: Diagnostic Passed",
-    time: "2 hours ago",
-  },
 ];
 
 const FILTERS = [
@@ -233,7 +151,7 @@ function Header({ timestamp }) {
   );
 }
 
-function CriticalBanner({ acknowledged, onAcknowledge, onView }) {
+function CriticalBanner({ alert, acknowledged, onAcknowledge, onView }) {
   return (
     <div className={`critical-banner${acknowledged ? " critical-banner-ack" : ""}`}>
       <div className="banner-left">
@@ -255,18 +173,18 @@ function CriticalBanner({ acknowledged, onAcknowledge, onView }) {
                 "UNACKNOWLEDGED"
               )}
             </span>
-            <span className="banner-node-name">Node 03 · South Zone</span>
+            <span className="banner-node-name">{alert ? alert.nodeName : "No active critical alert"}</span>
           </div>
           <p className="banner-message">
-            Rapid slope displacement detected beyond threshold.
+            {alert ? alert.title : "No active critical alert. Monitoring A/B telemetry."}
           </p>
           <div className="banner-meta-row">
             <span className="banner-meta banner-meta-risk">
-              Risk Score: 92/100 · HIGH
+              {alert ? `Risk Score: ${alert.riskScore}/100 · ${alert.riskLevel}` : "Risk Score: 0/100 · LOW"}
             </span>
-            <span className="banner-meta">Signal: Displacement ↑</span>
-            <span className="banner-meta">Velocity: +4.2 mm/hr</span>
-            <span className="banner-meta">Trend: Increasing rapidly</span>
+            <span className="banner-meta">{alert ? alert.signalLabel : "Signal: none"}</span>
+            <span className="banner-meta">{alert ? alert.value : "Live telemetry"}</span>
+            <span className="banner-meta">{alert ? alert.trend : "Monitoring"}</span>
           </div>
         </div>
       </div>
@@ -289,9 +207,9 @@ function CriticalBanner({ acknowledged, onAcknowledge, onView }) {
         <button
           type="button"
           className="btn btn-critical"
-          onClick={() => onView("Node 03 · South Zone")}
+          onClick={() => onView(alert?.nodeName || "Node A")}
         >
-          <span>View Critical Alert</span>
+          <span>{alert ? "View Critical Alert" : "View Nodes"}</span>
           <ArrowRight size={16} strokeWidth={2} />
         </button>
       </div>
@@ -319,7 +237,7 @@ function NodeStatusCard({ node }) {
   );
 }
 
-function AlertCard({ alert, onAcknowledge, onView }) {
+function AlertCard({ alert, onAcknowledge, onResolve, onView }) {
   const Icon = ALERT_ICONS[alert.icon];
   const SignalIcon = SIGNAL_ICONS[alert.icon];
   const isResolved = alert.severity === "resolved";
@@ -413,6 +331,15 @@ function AlertCard({ alert, onAcknowledge, onView }) {
             )}
           </button>
         )}
+        {!isResolved && (
+          <button
+            type="button"
+            className="btn btn-ack"
+            onClick={() => onResolve(alert.id)}
+          >
+            Resolve
+          </button>
+        )}
         <button
           type="button"
           className={`btn btn-view btn-view-${alert.severity}`}
@@ -499,11 +426,7 @@ function ToastItem({ toast, onClose, onAcknowledge, onView }) {
               type="button"
               className="toast-btn toast-btn-view"
               onClick={() => {
-                onView(
-                  toast.alertId === 1
-                    ? "Node 03 · South Zone"
-                    : "Node 02 · Central Haul Road"
-                );
+                onView(toast.nodeName || "Node");
                 onClose(toast.id);
               }}
             >
@@ -523,11 +446,62 @@ function ToastItem({ toast, onClose, onAcknowledge, onView }) {
 export default function Alerts() {
   const navigate = useNavigate();
   const timestamp = useLiveClock();
-  const [alerts, setAlerts] = useState(INITIAL_ALERTS);
-  const [bannerAcknowledged, setBannerAcknowledged] = useState(true);
+  const [alerts, setAlerts] = useState([]);
+  const [nodeStatus, setNodeStatus] = useState([]);
+  const [backendOnline, setBackendOnline] = useState(false);
+
   const [activeFilter, setActiveFilter] = useState("all");
   const [toasts, setToasts] = useState([]);
   const timeoutsRef = useRef([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const data = await fetchLiveData();
+        if (!mounted) return;
+        setBackendOnline(true);
+        const statuses = ["A", "B"].map((id) => {
+          const risk = data.risks[id];
+          const severity = risk?.severity || "GREEN";
+          const tone = severity === "RED" ? "critical" : severity === "AMBER" ? "warning" : "safe";
+          return { id: id.toLowerCase(), tone, name: `Node ${id} · Active Sensor`, description: risk?.signal ? risk.signal.replaceAll("_", " ") : "Awaiting temporal baseline", statusLabel: severity, score: `${Number(risk?.score || 0).toFixed(2)}/100` };
+        });
+        setNodeStatus(statuses);
+        setAlerts((data.alerts || []).map((a) => {
+          const isResolved = String(a.status).toUpperCase() === "RESOLVED";
+          const severity = isResolved
+            ? "resolved"
+            : String(a.severity).toUpperCase() === "RED"
+              ? "critical"
+              : String(a.severity).toUpperCase() === "AMBER"
+                ? "warning"
+                : "resolved";
+          return {
+            id: a.id,
+            severity,
+            icon: severity === "critical" ? "crisis" : severity === "warning" ? "vibration" : "resolved",
+            nodeName: `Node ${a.node_id} · Active Sensor`,
+            riskScore: (Number(a.score || 0).toFixed(2)),
+            riskLevel: String(a.severity).toUpperCase(),
+            title: a.message,
+            signalLabel: `Signal: ${a.signal}`,
+            value: `Score: ${Number(a.score || 0).toFixed(2)}/100`,
+            trend: `Status: ${a.status}`,
+            statusText: `Status: ${a.status}`,
+            time: a.timestamp ? new Date(a.timestamp).toLocaleString() : "recent",
+            acknowledged: Boolean(a.acknowledged),
+            backendId: a.id,
+          };
+        }));
+      } catch {
+        if (mounted) setBackendOnline(false);
+      }
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
 
   const badgeCount = alerts.filter(
     (a) => a.severity !== "resolved" && !a.acknowledged
@@ -545,9 +519,11 @@ export default function Alerts() {
       ? alerts
       : alerts.filter((a) => a.severity === activeFilter);
 
-  const addToast = ({ severity, title, message, alertId, duration = 6000 }) => {
+  const criticalAlert = alerts.find((a) => a.severity === "critical");
+
+  const addToast = ({ severity, title, message, alertId, nodeName, duration = 6000 }) => {
     const id = toastSeq++;
-    setToasts((prev) => [...prev, { id, severity, title, message, alertId }]);
+    setToasts((prev) => [...prev, { id, severity, title, message, alertId, nodeName }]);
     if (duration) {
       const t = setTimeout(() => removeToast(id), duration);
       timeoutsRef.current.push(t);
@@ -558,16 +534,21 @@ export default function Alerts() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const acknowledgeAlert = (id) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, acknowledged: true } : a))
-    );
-    if (id === 1) setBannerAcknowledged(true);
+  const acknowledgeAlert = async (id) => {
+    try { await apiAcknowledgeAlert(id); } catch { /* keep previous live state */ }
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)));
+
   };
 
   const acknowledgeBanner = () => {
-    setBannerAcknowledged(true);
-    acknowledgeAlert(1);
+    if (criticalAlert?.id) acknowledgeAlert(criticalAlert.id);
+  };
+
+  const resolveAlert = async (id) => {
+    try { await apiResolveAlert(id); } catch { /* keep previous live state */ }
+    setAlerts((prev) => prev.map((a) => (
+      a.id === id ? { ...a, severity: "resolved", acknowledged: true, status: "RESOLVED" } : a
+    )));
   };
 
   const viewNode = (nodeName) => {
@@ -581,33 +562,8 @@ export default function Alerts() {
   navigate("/Nodes");
 };
 
-  useEffect(() => {
-    const t1 = setTimeout(() => {
-      addToast({
-        severity: "warning",
-        title: "Telemetry Event · Node 02",
-        message:
-          "Abnormal vibration spike detected: 4.82 mm/s · Central Haul Road (Risk 58/100)",
-        alertId: 2,
-        duration: 6000,
-      });
-    }, 7000);
+  // Alerts are now sourced from FastAPI; no synthetic timed alerts.
 
-    const t2 = setTimeout(() => {
-      addToast({
-        severity: "critical",
-        title: "CRITICAL WARNING · Node 03",
-        message:
-          "Rapid slope displacement detected: +4.2 mm/hr · South Zone (Risk 92/100 HIGH)",
-        alertId: 1,
-        duration: 7000,
-      });
-    }, 15000);
-
-    timeoutsRef.current.push(t1, t2);
-    return () => timeoutsRef.current.forEach(clearTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="alerts-app">
@@ -631,7 +587,8 @@ export default function Alerts() {
         <main className="alerts-main">
           <div className="alerts-content-inner">
             <CriticalBanner
-              acknowledged={bannerAcknowledged}
+              alert={criticalAlert}
+              acknowledged={Boolean(criticalAlert?.acknowledged)}
               onAcknowledge={acknowledgeBanner}
               onView={viewNode}
             />
@@ -640,11 +597,11 @@ export default function Alerts() {
               <div>
                 <h2 className="section-heading">Early Warning Status</h2>
                 <p className="section-subheading">
-                  Current node conditions based on incoming sensor alerts
+                  Current A/B node conditions from the AI pipeline
                 </p>
               </div>
               <div className="node-status-grid">
-                {NODE_STATUS.map((node) => (
+                {nodeStatus.map((node) => (
                   <NodeStatusCard key={node.id} node={node} />
                 ))}
               </div>
@@ -688,6 +645,7 @@ export default function Alerts() {
                     key={alert.id}
                     alert={alert}
                     onAcknowledge={acknowledgeAlert}
+                    onResolve={resolveAlert}
                     onView={viewNode}
                   />
                 ))}
@@ -707,8 +665,8 @@ export default function Alerts() {
                 icon={CheckCircle2}
                 iconTone="emerald"
                 title="Sensor Health"
-                subtitle="3/3 nodes online"
-                badge="3/3 ONLINE"
+                subtitle={`${nodeStatus.length}/2 active nodes online`}
+                badge={`${backendOnline ? nodeStatus.length : 0}/2 ONLINE`}
                 badgeTone="emerald"
               />
             </section>
