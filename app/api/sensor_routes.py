@@ -19,7 +19,7 @@ def get_latest_readings(db: Session = Depends(get_db)):
 
     return readings
 
-@router.get("/node/{node_id}")
+@router.get("/node/{node_id}/history")
 def get_node_readings(node_id: str,db: Session = Depends(get_db)):
     return (
         db.query(SensorReading)

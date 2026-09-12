@@ -22,11 +22,11 @@ def calculate_risk(reading):
     return round(risk, 2)
 
 def get_severity(score):
-    if score < 30:
+    if score < 10:
         return "LOW"
-    elif score < 60:
+    elif score < 20:
         return "MEDIUM"
-    elif score < 80:
+    elif score < 30:
         return "HIGH"
     return "CRITICAL"
 
@@ -53,7 +53,7 @@ def calculate_node_risk(node_id: str,db: Session = Depends(get_db)):
     score = calculate_risk(reading)
     severity = get_severity(score)
     active_alert = (db.query(Alert).filter(Alert.node_id == node_id,Alert.status == "ACTIVE").order_by(Alert.timestamp.desc()).first())
-    if active_alert and score < 30:
+    if active_alert and score < 10:
         active_alert.status = "RESOLVED"
         active_alert.resolved_at = datetime.now(UTC)
         db.commit()

@@ -30,9 +30,9 @@ def get_node_status(db: Session = Depends(get_db)):
             })
             continue
         age = current_time - latest_reading.node_timestamp
-        if age < 60 :
+        if age < 300 :
                 status = "ONLINE"
-        elif age < 300 :
+        elif age < 1800 :
                 status = "DELAYED"
         else :
                 status = "OFFLINE"

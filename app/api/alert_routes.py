@@ -19,11 +19,11 @@ def generate_alert(node_id: str,db: Session = Depends(get_db)):
     )
     if not latest_risk:
         return {"error": "No risk score found for the given node ID"}
-    if latest_risk.score >= 80:
+    if latest_risk.score >= 30:
         severity = "CRITICAL"
-    elif latest_risk.score >= 60:
+    elif latest_risk.score >= 20:
         severity = "HIGH"
-    elif latest_risk.score >= 30:
+    elif latest_risk.score >= 10:
         severity = "MEDIUM"
     else:
         severity = "LOW"
