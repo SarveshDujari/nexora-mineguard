@@ -329,10 +329,16 @@ export default function MineGuardDashboard() {
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
-  const severityToClass = (severity) =>
-    severity === "RED" ? "critical" : severity === "AMBER" ? "warning" : "safe";
-  const severityToLabel = (severity) =>
-    severity === "RED" ? "HIGH" : severity === "AMBER" ? "MEDIUM" : "LOW";
+  const severityToClass = (severity) => {
+    if (severity === "RED" || severity === "HIGH") return "critical";
+    if (severity === "AMBER" || severity === "MEDIUM") return "warning";
+    return "safe";
+  };
+  const severityToLabel = (severity) => {
+    if (severity === "RED" || severity === "HIGH") return "HIGH";
+    if (severity === "AMBER" || severity === "MEDIUM") return "MEDIUM";
+    return "LOW";
+  };
   const liveNodes = live
     ? ["A", "B"].map((id) => {
         const r = live.byNode[id];
@@ -368,7 +374,14 @@ export default function MineGuardDashboard() {
     left: index === 0 ? "35%" : "62%", tone: node.statusClass,
   }));
   const attentionNodes = nodes.filter((n) => n.status !== "GREEN" && n.status !== "SAFE");
-  const overall = !online ? "NO DATA" : nodes.some((n) => n.status === "RED") ? "RED" : nodes.some((n) => n.status === "AMBER") ? "AMBER" : "GREEN";
+  const overall =
+    !online
+      ? "NO DATA"
+      : nodes.some((n) => n.status === "HIGH")
+        ? "HIGH"
+        : nodes.some((n) => n.status === "MEDIUM")
+          ? "MEDIUM"
+          : "LOW";
   const overallClass = overall === "NO DATA" ? "warning" : severityToClass(overall);
   const primary = attentionNodes[0];
 

@@ -327,15 +327,20 @@ export default function SensorNodes() {
     const r = live.byNode[id];
     const risk = live.risks[id];
     if (!r) return null;
-    const severity = risk?.severity || "GREEN";
-    const tone = severity === "RED" ? "critical" : severity === "AMBER" ? "warning" : "safe";
+    const severity = risk?.severity || "LOW";
+    const tone =
+      severity === "HIGH"
+        ? "critical"
+        : severity === "MEDIUM"
+          ? "warning"
+          : "safe";
     const score = (Number(risk?.score || 0).toFixed(2));
     return {
       nodeId: id,
       tone,
       severity,
       riskScore: score,
-      riskLevel: severity === "RED" ? "HIGH" : severity === "AMBER" ? "MEDIUM" : "LOW",
+      riskLevel: severity,
       progression: risk?.signal || "INSUFFICIENT_DATA",
       tiltX: Number(r.tilt_x),
       tiltY: Number(r.tilt_y),

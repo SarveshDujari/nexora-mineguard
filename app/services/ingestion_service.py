@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.sensor_reading import SensorReading
 from app.repositories.sensor_repo import (create_sensor_readings, create_sensor_readings)
 from app.models.risk_score import RiskScore
+from app.services.alert_service import generate_alert_for_node
 from app.services.risk_service import (calculate_risk,get_severity)
 
 def ingest_gateway_packet(packet,db: Session):
@@ -39,6 +40,8 @@ def ingest_gateway_packet(packet,db: Session):
         )
         db.add(risk_entry)
     db.commit()
+    for reading in readings : 
+        generate_alert_for_node(reading.node_id,db)
     return {
         "status": "success",
         "row_inserted": len(readings)

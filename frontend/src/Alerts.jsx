@@ -472,11 +472,11 @@ export default function Alerts() {
           const isResolved = String(a.status).toUpperCase() === "RESOLVED";
           const severity = isResolved
             ? "resolved"
-            : String(a.severity).toUpperCase() === "RED"
+            : String(a.severity).toUpperCase() === "HIGH"
               ? "critical"
-              : String(a.severity).toUpperCase() === "AMBER"
+              : String(a.severity).toUpperCase() === "MEDIUM"
                 ? "warning"
-                : "resolved";
+                : "safe";
           return {
             id: a.id,
             severity,

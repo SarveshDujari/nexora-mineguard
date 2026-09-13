@@ -14,10 +14,10 @@ def calculate_risk(reading):
     return round(risk, 2)
 
 def get_severity(score):
-    if score < 10:
+    if score < 20:
         return "LOW"
-    elif score < 20:
+    elif score < 40:
         return "MEDIUM"
-    elif score < 30:
+    else :
         return "HIGH"
-    return "CRITICAL"
+
