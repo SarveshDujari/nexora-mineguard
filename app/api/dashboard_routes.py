@@ -18,7 +18,8 @@ def dashboard_overview(db: Session = Depends(get_db)):
         risk_data.append({
             "node_id": risk.node_id,
             "score": risk.score,
-            "severity": risk.severity
+            "severity": risk.severity,
+            "signal": risk.signal
         })
     return {
         "total_nodes": total_nodes,

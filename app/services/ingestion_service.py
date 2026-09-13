@@ -7,6 +7,8 @@ from app.services.risk_service import (calculate_risk,get_severity)
 def ingest_gateway_packet(packet,db: Session):
     readings = []
     for node in packet.payload.nodes:
+        if node.node_id == "C":
+            continue
         reading = SensorReading(
             gateway_id=packet.gateway_id,
             bridge_id=packet.payload.bridge_id,

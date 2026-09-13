@@ -1,0 +1,7 @@
+fastapi
+sqlalchemy
+pydantic
+numpy
+pandas
+scikit-learn
+joblib
