@@ -20,3 +20,4 @@ frontend/dist/
 frontend/.vite/
 frontend/dist/
 frontend/node_modules/
+*.code-workspace
