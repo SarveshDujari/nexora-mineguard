@@ -323,7 +323,7 @@ export default function SensorNodes() {
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
-  const liveNodes = live ? ["A", "B"].map((id) => {
+  const liveNodes = live ? ["A", "B","C"].map((id) => {
     const r = live.byNode[id];
     const risk = live.risks[id];
     if (!r) return null;

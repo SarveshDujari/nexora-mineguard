@@ -39,6 +39,7 @@ function useUtcClock() {
 const NODE_TELEMETRY = {
   1: { node_id: "A", name: "Node A", zone: "Active Sensor A", sector: "Prototype", lat: 23.6550, lng: 86.4520, telemetry: { tilt_x: 0, tilt_y: 0, vib_rms: 0, flex_raw: 0, crack_ok: true, rssi: null, buffered: false }, alert: { severity: "GREEN", signal: "INSUFFICIENT_DATA", score: 0, message: "Waiting for live telemetry.", ts: "" } },
   2: { node_id: "B", name: "Node B", zone: "Active Sensor B", sector: "Prototype", lat: 23.6570, lng: 86.4540, telemetry: { tilt_x: 0, tilt_y: 0, vib_rms: 0, flex_raw: 0, crack_ok: true, rssi: null, buffered: false }, alert: { severity: "GREEN", signal: "INSUFFICIENT_DATA", score: 0, message: "Waiting for live telemetry.", ts: "" } },
+  3: { node_id: "C", name: "Node C", zone: "Active Sensor C", sector: "Prototype", lat: 23.6590, lng: 86.4560, telemetry: { tilt_x: 0, tilt_y: 0, vib_rms: 0, flex_raw: 0, crack_ok: true, rssi: null, buffered: false }, alert: { severity: "GREEN", signal: "INSUFFICIENT_DATA", score: 0, message: "Waiting for live telemetry.", ts: "" } },
 };
 
 const SEVERITY_CLASS = {
@@ -298,7 +299,7 @@ export default function LiveMap() {
         const live = await fetchLiveData();
         if (!mounted) return;
         const next = { ...NODE_TELEMETRY };
-        ["A", "B"].forEach((id, index) => {
+        ["A", "B","C"].forEach((id, index) => {
           const r = live.byNode[id];
           const risk = live.risks[id];
           if (!r) return;

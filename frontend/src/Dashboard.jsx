@@ -340,7 +340,7 @@ export default function MineGuardDashboard() {
     return "LOW";
   };
   const liveNodes = live
-    ? ["A", "B"].map((id) => {
+    ? ["A", "B","C"].map((id) => {
         const r = live.byNode[id];
         const risk = live.risks[id];
         if (!r) return null;
@@ -369,9 +369,17 @@ export default function MineGuardDashboard() {
         time: "live", tone: severityToClass(a.severity),
       }))
     : [];
+  const markerPositions = [
+    { top: "35%", left: "35%" }, // Node A
+    { top: "60%", left: "62%" }, // Node B
+    { top: "42%", left: "72%" }, // Node C
+  ];
+
   const mapMarkers = nodes.map((node, index) => ({
-    id: node.id.replace("NODE ", "Node "), top: index === 0 ? "35%" : "60%",
-    left: index === 0 ? "35%" : "62%", tone: node.statusClass,
+    id: node.id.replace("NODE ", "Node "),
+    top: markerPositions[index]?.top || "50%",
+    left: markerPositions[index]?.left || "50%",
+    tone: node.statusClass,
   }));
   const attentionNodes = nodes.filter((n) => n.status !== "GREEN" && n.status !== "SAFE");
   const overall =

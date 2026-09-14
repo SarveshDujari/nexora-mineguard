@@ -461,7 +461,7 @@ export default function Alerts() {
         const data = await fetchLiveData();
         if (!mounted) return;
         setBackendOnline(true);
-        const statuses = ["A", "B"].map((id) => {
+        const statuses = ["A", "B","C"].map((id) => {
           const risk = data.risks[id];
           const severity = risk?.severity || "GREEN";
           const tone = severity === "RED" ? "critical" : severity === "AMBER" ? "warning" : "safe";

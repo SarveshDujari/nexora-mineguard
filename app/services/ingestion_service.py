@@ -4,19 +4,17 @@ from app.repositories.sensor_repo import (create_sensor_readings, create_sensor_
 from app.models.risk_score import RiskScore
 from app.services.alert_service import generate_alert_for_node
 from app.services.risk_service import (calculate_risk,get_severity)
+import time
 
 def ingest_gateway_packet(packet,db: Session):
     readings = []
     for node in packet.payload.nodes:
-        if node.node_id == "C":
-            continue
         reading = SensorReading(
             gateway_id=packet.gateway_id,
             bridge_id=packet.payload.bridge_id,
             node_id=node.node_id,
             node_timestamp=node.ts,
-            gateway_received_timestamp=
-            packet.received_ts,
+            gateway_received_timestamp=int(time.time()),
             buffered=packet.buffered, 
             tilt_x=node.tilt_x,
             tilt_y=node.tilt_y,
