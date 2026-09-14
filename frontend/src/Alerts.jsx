@@ -469,12 +469,13 @@ export default function Alerts() {
         });
         setNodeStatus(statuses);
         setAlerts((data.alerts || []).map((a) => {
-          const isResolved = String(a.status).toUpperCase() === "RESOLVED";
+          const isResolved = String(a.status || "").toUpperCase() === "RESOLVED";
+          const rawSeverity = String(a.severity || "GREEN").toUpperCase();
           const severity = isResolved
             ? "resolved"
-            : String(a.severity).toUpperCase() === "HIGH"
+            : rawSeverity === "RED"
               ? "critical"
-              : String(a.severity).toUpperCase() === "MEDIUM"
+              : rawSeverity === "AMBER"
                 ? "warning"
                 : "safe";
           return {
