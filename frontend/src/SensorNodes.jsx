@@ -362,7 +362,7 @@ export default function SensorNodes() {
             <div className="page-header-row">
               <div>
                 <h1 className="page-title">Sensor Nodes</h1>
-                <p className="page-subtitle">Live A/B telemetry, historical trends, and AI risk state.</p>
+                <p className="page-subtitle">Live A/B/C telemetry, historical trends, and AI risk state.</p>
               </div>
               <div className="live-pill">
                 <span className="ping-wrap"><span className="ping-ping" /><span className="ping-dot" /></span>

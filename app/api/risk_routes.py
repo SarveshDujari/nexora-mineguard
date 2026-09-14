@@ -6,6 +6,8 @@ from app.models.alert import Alert
 from app.models.risk_score import RiskScore
 from app.models.sensor_reading import SensorReading
 from app.services.risk_service import (calculate_risk,get_severity)
+from types import SimpleNamespace
+from app.ai.pipeline import pipeline
 
 router = APIRouter(prefix="/api/risk",tags=["Risk"])
 
@@ -20,35 +22,52 @@ def get_risk_scores(node_id: str, limit: int = 200, db: Session = Depends(get_db
     )
 
 @router.post("/calculate/{node_id}")
-def calculate_node_risk(node_id: str,db: Session = Depends(get_db)):
+def calculate_node_risk(
+    node_id: str,
+    db: Session = Depends(get_db)
+):
     reading = (
         db.query(SensorReading)
         .filter(SensorReading.node_id == node_id)
         .order_by(SensorReading.node_timestamp.desc())
         .first()
     )
-    if not reading : 
+
+    if not reading:
         return {"error": "No reading found for the given node ID"}
-    score = calculate_risk(reading)
-    severity = get_severity(score)
-    active_alert = (db.query(Alert).filter(Alert.node_id == node_id,Alert.status == "ACTIVE").order_by(Alert.timestamp.desc()).first())
-    if active_alert and score < 10:
-        active_alert.status = "RESOLVED"
-        active_alert.resolved_at = datetime.now(UTC)
-        db.commit()
-        db.refresh(active_alert)
+
+    ai_reading = SimpleNamespace(
+        node_id=reading.node_id,
+        ts=reading.node_timestamp,
+        tilt_x=reading.tilt_x,
+        tilt_y=reading.tilt_y,
+        vib_rms=reading.vib_rms,
+        flex_raw=reading.flex_raw,
+        crack_ok=reading.crack_ok,
+        rssi=reading.rssi,
+    )
+
+    results = pipeline.process_packet([ai_reading])
+    result = results[0]
+
+    score = round(result["fusion_score"] * 100, 2)
+
     risk_entry = RiskScore(
         node_id=node_id,
         score=score,
-        signal="ACTIVE",
-        severity=severity,
+        signal=result["progression"],
+        severity=result["severity"],
         node_timestamp=reading.node_timestamp,
     )
+
     db.add(risk_entry)
     db.commit()
     db.refresh(risk_entry)
+
     return {
         "node_id": node_id,
         "risk_score": score,
-        "severity": severity
+        "severity": result["severity"],
+        "progression": result["progression"],
+        "corroborated": result["corroborated"],
     }

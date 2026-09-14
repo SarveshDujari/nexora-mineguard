@@ -1,5 +1,6 @@
 # MineGuard live-prototype AI configuration.
-# Physical prototype: A + B active nodes, C = bridge. No reference node / VD.
+# Physical prototype: A, B and C are active sensor nodes.
+# Node C also acts as the bridge.
 
 NOISE_WINDOW = 20
 RATE_MAX = 0.018          # deg/s
