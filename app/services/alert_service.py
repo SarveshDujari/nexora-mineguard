@@ -32,7 +32,7 @@ def generate_alert_for_node(node_id: str, db: Session = Depends(get_db)):
     # Resolve any active alert and do NOT send SMS
     # =========================================================
 
-    if score <= 40:
+    if score < 55 :
 
         active_alert = (
             db.query(Alert)
@@ -68,7 +68,7 @@ def generate_alert_for_node(node_id: str, db: Session = Depends(get_db)):
     # HIGH RISK
     # =========================================================
 
-    severity = "HIGH"
+    severity = latest_risk.severity
 
     # Check if this node already has an active alert
     existing_alert = (
