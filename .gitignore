@@ -7,6 +7,7 @@ fastapi-env/
 .env/
 .env
 .env.*
+!.env.example
 .vscode/
 build/
 dist/
