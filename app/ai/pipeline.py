@@ -12,7 +12,8 @@ from .config import RED_PERSISTENCE, GREEN_RECOVERY, ISOLATION_DAMPING
 class LiveAIPipeline:
     """
     Stateful live pipeline for the 3-node physical prototype.
-    A and B are active sensors; C is only the bridge.
+    A, B and C are active sensor nodes.
+    C also acts as the bridge.
     """
 
     def __init__(self):
