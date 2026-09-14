@@ -385,11 +385,11 @@ export default function MineGuardDashboard() {
   const overall =
     !online
       ? "NO DATA"
-      : nodes.some((n) => n.status === "HIGH")
-        ? "HIGH"
-        : nodes.some((n) => n.status === "MEDIUM")
-          ? "MEDIUM"
-          : "LOW";
+      : nodes.some((n) => n.status === "RED")
+        ? "RED"
+        : nodes.some((n) => n.status === "AMBER")
+          ? "AMBER"
+          : "GREEN";
   const overallClass = overall === "NO DATA" ? "warning" : severityToClass(overall);
   const primary = attentionNodes[0];
 

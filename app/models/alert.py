@@ -11,7 +11,7 @@ class Alert(Base):
     node_id: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
     severity: Mapped[str] = mapped_column(String(20))
-    signal: Mapped[str] = mapped_column(String(20))                                                                                  
+    signal: Mapped[str] = mapped_column(String(50))                                                                                  
     score: Mapped[float] = mapped_column(Float)                                                                                            
     message: Mapped[str] = mapped_column(String(255))
     acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)  

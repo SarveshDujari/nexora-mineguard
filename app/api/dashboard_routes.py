@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/dashboard",tags=["Dashboard"])
 def dashboard_overview(db: Session = Depends(get_db)):
     total_nodes = (db.query(SensorReading.node_id).distinct().count())
     active_alerts = (db.query(Alert).filter(Alert.status == "ACTIVE").count())
-    critical_alerts = (db.query(Alert).filter(Alert.status == "ACTIVE",Alert.severity == "CRITICAL").count())
+    critical_alerts = (db.query(Alert).filter(Alert.status == "ACTIVE",Alert.severity == "RED").count())
     latest_risks = (db.query(RiskScore).order_by(RiskScore.timestamp.desc()).limit(10).all())
     risk_data = []
     for risk in latest_risks:

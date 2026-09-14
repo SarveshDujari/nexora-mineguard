@@ -5,7 +5,6 @@ from app.database.dependencies import get_db
 from app.models.alert import Alert
 from app.models.risk_score import RiskScore
 from app.models.sensor_reading import SensorReading
-from app.services.risk_service import (calculate_risk,get_severity)
 from types import SimpleNamespace
 from app.ai.pipeline import pipeline
 
