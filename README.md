@@ -335,70 +335,90 @@ The proposed field architecture uses low-cost embedded nodes with wireless aggre
 
 # 🧩 Software Architecture
 
+# 🧩 Software Architecture
+
 ```mermaid
 flowchart TB
-    subgraph FRONTEND[React + Vite]
-        APP[App / Router]
-        DASH[Dashboard]
-        NODES[Sensor Nodes]
-        MAP[Live Map]
-        ALERTS[Alerts]
-        DATA[liveData.js]
+
+    subgraph FRONTEND["React + Vite Frontend"]
+        APP["App / Router"]
+        DASH["Dashboard"]
+        NODES["Sensor Nodes"]
+        MAP["Live Map"]
+        ALERTS["Alerts"]
+        DATA["liveData.js"]
     end
 
-    subgraph API[FastAPI]
-        ING[/api/ingest]
-        SENSOR[/api/sensors]
-        RISK[/api/risk]
-        DASHAPI[/api/dashboard]
-        GIS[/api/map]
-        ALERTAPI[/api/alerts]
+    subgraph API["FastAPI Backend"]
+        APIGW["FastAPI REST API"]
+        ING["/api/ingest"]
+        SENSOR["/api/sensors"]
+        RISK["/api/risk"]
+        DASHAPI["/api/dashboard"]
+        GIS["/api/map"]
+        ALERTAPI["/api/alerts"]
     end
 
-    subgraph SERVICES[Application Services]
-        IS[Ingestion Service]
-        RS[Risk / AI Service]
-        AS[Alert Service]
+    subgraph SERVICES["Application Services"]
+        IS["Ingestion Service"]
+        RS["Risk / AI Service"]
+        AS["Alert Service"]
     end
 
-    subgraph AI[AI Modules]
-        BASE[Baseline]
-        FEAT[Features]
-        ANOM[Isolation Forest]
-        SCORE[Scoring / Fusion]
-        PROG[Progression]
+    subgraph AI["AI Modules"]
+        BASE["Baseline"]
+        FEAT["Feature Engineering"]
+        ANOM["Isolation Forest"]
+        SCORE["Scoring / Fusion"]
+        PROG["Progression"]
     end
 
-    DB[(PostgreSQL)]
-    MODEL[(Isolation Forest Artifact)]
+    DB[("PostgreSQL")]
+    MODEL[("Isolation Forest Model")]
 
     APP --> DASH
     APP --> NODES
     APP --> MAP
     APP --> ALERTS
+
     DASH --> DATA
     NODES --> DATA
     MAP --> DATA
     ALERTS --> DATA
 
-    DATA --> API
+    DATA --> APIGW
+
+    APIGW --> ING
+    APIGW --> SENSOR
+    APIGW --> RISK
+    APIGW --> DASHAPI
+    APIGW --> GIS
+    APIGW --> ALERTAPI
+
     ING --> IS
+    IS --> DB
     IS --> AI
+
+    RISK --> RS
+    RS --> AI
+    RS --> DB
+
+    ALERTAPI --> AS
+    AS --> DB
+
+    SENSOR --> DB
+    DASHAPI --> DB
+    GIS --> DB
+
     AI --> BASE
     AI --> FEAT
     AI --> ANOM
     AI --> SCORE
     AI --> PROG
+
     ANOM --> MODEL
-    IS --> DB
-    RISK --> RS
-    RS --> AI
-    RS --> DB
-    AS --> DB
-    ALERTAPI --> AS
-    SENSOR --> DB
-    DASHAPI --> DB
-    GIS --> DB
+    SCORE --> DB
+    PROG --> DB
 ```
 
 ---
@@ -456,8 +476,6 @@ nexora-mineguard/
 ├── scripts/
 │   └── replay_data.py
 │
-├── synthetic_data/
-│   └── A-only.jsonl
 │
 ├── bridge.py                  # Serial/ESP32 → HTTP bridge
 ├── simulate_live.py           # Live synthetic telemetry simulator
