@@ -188,7 +188,7 @@ function NodePopover({ node, onClose, onViewDetails }) {
           </div>
           <div className="mg-popover-meta">
             <span className={`mg-popover-score ${sevClass}`}>
-              Anomaly Score: {alert.score}σ
+              Anomaly Score: {alert.score / 100}σ
             </span>
             <span style={{ color: "var(--color-outline)" }}>•</span>
             <span>{sector}</span>
@@ -433,7 +433,7 @@ export default function LiveMap() {
                   <span className="mg-toolbar-tag mg-text-label-sm">Sector 4-B Pit</span>
                 </div>
                 <p className="mg-toolbar-sub mg-text-body-sm">
-                  Spatial overview of the 2 active sensor nodes across the prototype
+                  Spatial overview of the 3 active sensor nodes across the prototype
                 </p>
               </div>
               <div className="mg-legend">

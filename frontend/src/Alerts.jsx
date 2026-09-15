@@ -598,7 +598,7 @@ export default function Alerts() {
               <div>
                 <h2 className="section-heading">Early Warning Status</h2>
                 <p className="section-subheading">
-                  Current A/B node conditions from the AI pipeline
+                  Current A/B/C node conditions from the AI pipeline
                 </p>
               </div>
               <div className="node-status-grid">
