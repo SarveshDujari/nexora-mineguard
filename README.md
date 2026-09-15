@@ -333,8 +333,6 @@ The proposed field architecture uses low-cost embedded nodes with wireless aggre
 
 # 🧩 Software Architecture
 
-# 🧩 Software Architecture
-
 ```mermaid
 flowchart TB
 
@@ -676,6 +674,10 @@ You can also control sample count and interval:
 ```bash
 python simulate_live.py accelerating --samples 100 --interval 0.5
 ```
+
+Monitoring Timescale: 
+ Mine subsidence is generally a progressive phenomenon that develops over extended periods rather than occurring as a second-by-second event. Therefore, continuous high-frequency sampling is not required for every subsidence-monitoring decision.
+In the intended deployment, sensor telemetry can be collected at configurable intervals such as 5–15 minutes, with the exact interval determined through field validation and site-specific requirements. The prototype simulator may use much shorter intervals to demonstrate the end-to-end pipeline and accelerate testing.
 
 ---
 
