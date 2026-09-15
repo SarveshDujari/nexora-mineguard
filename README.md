@@ -463,7 +463,6 @@ nexora-mineguard/
 ├── simulate_live.py           # Live synthetic telemetry simulator
 ├── create_table.py            # Create PostgreSQL tables
 ├── test_conn.py               # Database connectivity test
-├── test_step7_ai.py           # AI pipeline test
 ├── requirements-ai.txt
 ├── .env.example
 └── README.md
