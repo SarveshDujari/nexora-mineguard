@@ -29,8 +29,6 @@ MineGuard creates a **distributed, low-cost sensing layer** and combines multipl
 
 ## 💡 Proposed Solution
 
-![MineGuard Idea – Proposed Solution](docs/idea-proposed-solution.png)
-
 ### Core idea
 
 Each sensor node measures physical conditions and sends telemetry through a mesh/bridge architecture. A gateway forwards the collected packet to the backend. The backend stores raw readings, runs the AI risk pipeline, generates alerts, and exposes the latest state to the web dashboard.
@@ -733,8 +731,6 @@ Provides operator-facing alert management, including acknowledgement and resolut
 ---
 
 # 🖼️ Technical Approach
-
-![MineGuard Technical Approach](docs/technical-approach.png)
 
 The technical architecture separates the solution into five logical layers:
 
