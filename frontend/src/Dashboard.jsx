@@ -19,7 +19,6 @@ import {
   Activity,
   Network,
   ShieldAlert,
-  TrendingUp,
   Layers,
   BellRing,
 } from "lucide-react";
@@ -122,7 +121,56 @@ const connectionHealth = [
   { label: "Backend → Dashboard", status: "API polling · Live" },
 ];
 
-function NavLink({ item, badge }) {
+// ---------------------------------------------------------------------------
+ // Shared severity -> UI color mapping
+ // ---------------------------------------------------------------------------
+ function severityToClass(severity) {
+   const value = String(severity || "GREEN").toUpperCase();
+
+   if (value === "RED" || value === "HIGH" || value === "CRITICAL") {
+     return "critical";
+   }
+
+   if (value === "AMBER" || value === "MEDIUM" || value === "WARNING") {
+     return "warning";
+   }
+
+   return "safe";
+ }
+
+ function severityToLabel(severity) {
+   const value = String(severity || "GREEN").toUpperCase();
+
+   if (value === "RED" || value === "HIGH" || value === "CRITICAL") {
+     return "HIGH";
+   }
+
+   if (value === "AMBER" || value === "MEDIUM" || value === "WARNING") {
+     return "MEDIUM";
+   }
+
+   return "LOW";
+ }
+
+ const severityColors = {
+   safe: {
+     main: "#16a34a",
+     soft: "rgba(22, 163, 74, 0.10)",
+     border: "rgba(22, 163, 74, 0.35)",
+   },
+   warning: {
+     main: "#f59e0b",
+     soft: "rgba(245, 158, 11, 0.10)",
+     border: "rgba(245, 158, 11, 0.40)",
+   },
+   critical: {
+     main: "#dc2626",
+     soft: "rgba(220, 38, 38, 0.10)",
+     border: "rgba(220, 38, 38, 0.40)",
+   },
+ };
+
+ function NavLink({ item, badge }) {
   const Icon = item.icon;
 
   return (
@@ -145,40 +193,81 @@ function NavLink({ item, badge }) {
   );
 }
 
-function PipelineStage({ stage }) {
+function PipelineStage({ stage, severity }) {
   const Icon = stage.icon;
+  const severityClass = severityToClass(severity);
+  const colors = severityColors[severityClass];
+
   return (
-    <div className={`pipeline-stage pipeline-stage--${stage.variant}`}>
+    <div
+      className={`pipeline-stage pipeline-stage--${stage.variant} pipeline-stage--${severityClass}`}
+      style={{
+        borderColor: colors.border,
+        boxShadow: `0 0 0 1px ${colors.border}`,
+      }}
+    >
       <div
         className={`pipeline-stage__icon${
           stage.variant === "solid" ? " pipeline-stage__icon--solid" : ""
         }${stage.iconTone === "accent" ? " pipeline-stage__icon--accent" : ""}`}
+        style={{
+          color: colors.main,
+          backgroundColor: colors.soft,
+          borderColor: colors.border,
+        }}
       >
         <Icon size={16} strokeWidth={2} />
       </div>
-      <span className="pipeline-stage__title">{stage.title}</span>
+      <span
+        className="pipeline-stage__title"
+        style={{ color: colors.main }}
+      >
+        {stage.title}
+      </span>
       <span className="pipeline-stage__subtitle">{stage.subtitle}</span>
     </div>
   );
 }
 
-function PipelineConnector({ color }) {
+function PipelineConnector({ color, severity }) {
+  const severityClass = severityToClass(severity);
+  const colors = severityColors[severityClass];
+
   return (
-    <div className="pipeline-connector">
-      <div className="pipeline-connector__track">
-        <div className={`pipeline-connector__packet pipeline-connector__packet--${color}`} />
+    <div className={`pipeline-connector pipeline-connector--${severityClass}`}>
+      <div
+        className="pipeline-connector__track"
+        style={{ backgroundColor: colors.border }}
+      >
+        <div
+          className={`pipeline-connector__packet pipeline-connector__packet--${color}`}
+          style={{ backgroundColor: colors.main }}
+        />
       </div>
-      <ArrowRight size={13} className={`pipeline-connector__arrow pipeline-connector__arrow--${color}`} />
+      <ArrowRight
+        size={13}
+        className={`pipeline-connector__arrow pipeline-connector__arrow--${color}`}
+        style={{ color: colors.main }}
+      />
     </div>
   );
 }
 
-function HealthPill({ label, status }) {
+function HealthPill({ label, status, severity }) {
+  const severityClass = severityToClass(severity);
+  const colors = severityColors[severityClass];
+
   return (
     <div className="health-pill">
       <span className="health-pill__label">{label}</span>
       <span className="health-pill__status">
-        <span className="dot dot--safe" />
+        <span
+          className={`dot dot--${severityClass}`}
+          style={{
+            backgroundColor: colors.main,
+            boxShadow: `0 0 0 3px ${colors.soft}`,
+          }}
+        />
         <span>{status}</span>
       </span>
     </div>
@@ -291,12 +380,17 @@ function MapMarker({ marker }) {
 
       {marker.callout && (
         <div className="map-callout">
-          <div className="map-callout__header">Node 03 · South Zone</div>
+          <div className="map-callout__header">{marker.id}</div>
           <div className="map-callout__risk">
-            <span className="dot dot--critical" />
-            Critical · Risk Score: 92/100
+            <span
+              className={`dot dot--${marker.tone}`}
+              style={{
+                backgroundColor: severityColors[marker.tone]?.main,
+              }}
+            />
+            {marker.severity} · Risk Score: {marker.riskScore}/100
           </div>
-          <p className="map-callout__desc">Displacement above threshold</p>
+          <p className="map-callout__desc">{marker.concern}</p>
           <a href="#" className="map-callout__link">
             View Node <ArrowRight size={12} />
           </a>
@@ -329,16 +423,6 @@ export default function MineGuardDashboard() {
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
-  const severityToClass = (severity) => {
-    if (severity === "RED" || severity === "HIGH") return "critical";
-    if (severity === "AMBER" || severity === "MEDIUM") return "warning";
-    return "safe";
-  };
-  const severityToLabel = (severity) => {
-    if (severity === "RED" || severity === "HIGH") return "HIGH";
-    if (severity === "AMBER" || severity === "MEDIUM") return "MEDIUM";
-    return "LOW";
-  };
   const liveNodes = live
     ? ["A", "B","C"].map((id) => {
         const r = live.byNode[id];
@@ -380,6 +464,10 @@ export default function MineGuardDashboard() {
     top: markerPositions[index]?.top || "50%",
     left: markerPositions[index]?.left || "50%",
     tone: node.statusClass,
+    severity: node.status,
+    riskScore: node.riskScore,
+    concern: node.concern,
+    callout: node.statusClass === "critical" || node.statusClass === "warning",
   }));
   const attentionNodes = nodes.filter((n) => n.status !== "GREEN" && n.status !== "SAFE");
   const overall =
@@ -497,9 +585,12 @@ export default function MineGuardDashboard() {
               <div className="pipeline-track">
                 {pipelineStages.map((stage, i) => (
                   <React.Fragment key={stage.key}>
-                    <PipelineStage stage={stage} />
+                    <PipelineStage stage={stage} severity={overall} />
                     {i < pipelineStages.length - 1 && (
-                      <PipelineConnector color={connectorColors[i]} />
+                      <PipelineConnector
+                        color={connectorColors[i]}
+                        severity={overall}
+                      />
                     )}
                   </React.Fragment>
                 ))}
@@ -513,7 +604,12 @@ export default function MineGuardDashboard() {
               </div>
               <div className="connection-health__grid">
                 {connectionHealth.map((h) => (
-                  <HealthPill key={h.label} label={h.label} status={h.status} />
+                  <HealthPill
+                    key={h.label}
+                    label={h.label}
+                    status={h.status}
+                    severity={overall}
+                  />
                 ))}
               </div>
             </div>
@@ -562,49 +658,7 @@ export default function MineGuardDashboard() {
             ))}
           </section>
 
-          {/* Risk trend row */}
-          <div className="card risk-trend">
-            <div className="risk-trend__left">
-              <div className="risk-trend__icon">
-                <TrendingUp size={20} />
-              </div>
-              <div className="risk-trend__text">
-                <div className="risk-trend__title-row">
-                  <h3 className="risk-trend__title">Risk Trend — Last 1 Hour</h3>
-                  <span className="risk-trend__badge">
-                    <span className="dot dot--critical" />
-                    Early warning triggered
-                  </span>
-                </div>
-                <div className="risk-trend__values">
-                  <span className="risk-trend__node">{primary ? `${primary.id} · ${primary.concern}:` : "Live AI status:"}</span>
-                  <span className="risk-trend__numbers">{primary ? `${primary.riskScore}/100` : "GREEN"}</span>
-                </div>
-              </div>
-            </div>
-            <div className="risk-trend__right">
-              <svg className="sparkline" viewBox="0 0 160 30" preserveAspectRatio="none">
-                <polyline
-                  fill="none"
-                  points="0,25 50,20 105,12 160,3"
-                  stroke="#e11d48"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="0" cy="25" r="3" fill="#e11d48" />
-                <circle cx="50" cy="20" r="3" fill="#e11d48" />
-                <circle cx="105" cy="12" r="3" fill="#e11d48" />
-                <circle cx="160" cy="3" r="4" fill="#e11d48" />
-              </svg>
-              <div className="sparkline__axis">
-                <span>-60m</span>
-                <span>-30m</span>
-                <span>-15m</span>
-                <span className="sparkline__axis-now">Now</span>
-              </div>
-            </div>
-          </div>
+          {/* Node stats */}
 
           {/* Bottom split: map + alerts */}
           <section className="bottom-split">
