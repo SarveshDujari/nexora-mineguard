@@ -208,7 +208,7 @@ function NodeCard({ node }) {
     if (activeTab === "risk") {
       return riskHistory.map((r) => ({
         time: new Date(Number(r.node_timestamp) * 1000).toISOString().slice(11, 16),
-        risk: Number(r.score) * 100,
+        risk: Number(r.score),
       }));
     }
     return history.map((r) => ({
@@ -245,12 +245,15 @@ function NodeCard({ node }) {
               <MetricCard label="Tilt X / Y" value={`${node.tiltX.toFixed(3)}° | ${node.tiltY.toFixed(3)}°`} note="Live" tone={node.tone} />
               <MetricCard label="Tilt magnitude" value={`${node.tiltMag.toFixed(3)}°`} note="Live" tone={node.tiltMag > 1.2 ? "warning" : "safe"} />
               <MetricCard label="Vibration RMS" value={node.vibration.toFixed(3)} note="Live" tone={node.tone} />
-              <MetricCard label="RSSI" value={node.rssi == null ? "N/A" : `${node.rssi.toFixed(1)} dBm`} note="Live / AI baseline" tone="safe" />
+              <MetricCard label="RSSI" value={node.rssi == null ? "N/A" : `${node.rssi.toFixed(1)} dBm`} note="Live / AI baseline" tone={node.tone} />
             </div>
           </div>
           <div className="node-info-footer">
             <div className="node-connection">
-              <span className="connection-item"><span className="connection-dot" />Connected</span>
+              <span className="connection-item">
+                <span className="connection-dot" />
+                Connected
+              </span>
               <span className="dot-separator">•</span>
               <span className="connection-rssi">RSSI {node.rssi == null ? "N/A" : `${node.rssi.toFixed(1)} dBm`}</span>
               <span className="dot-separator">•</span>
@@ -334,7 +337,7 @@ export default function SensorNodes() {
         : severity === "AMBER"
           ? "warning"
           : "safe";
-    const score = (Number(risk?.score || 0).toFixed(2));
+    const score = Number(risk?.score || 0).toFixed(2);
     return {
       nodeId: id,
       tone,
