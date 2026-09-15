@@ -820,7 +820,6 @@ The current repository is a working software prototype. Potential next steps inc
 - [ ] Mine-specific calibration and geotechnical validation
 - [ ] Battery/energy monitoring and low-power operation
 - [ ] More advanced spatial risk modelling
-- [ ] SMS/email/push notification hardening
 - [ ] Role-based operator authentication
 - [ ] Audit logs and incident reports
 - [ ] Containerized deployment
@@ -843,7 +842,3 @@ The project brings together embedded sensing, wireless communication, backend en
 MineGuard is an **academic/prototype system developed for Smart India Hackathon**. Sensor thresholds, AI scores, simulator data and alert logic must be validated against real mine environments and domain-expert requirements before any operational safety decision is based on the system.
 
 ---
-
-## ⭐ If you found this project useful
-
-Star the repository and follow the project as we continue improving the MineGuard prototype.
